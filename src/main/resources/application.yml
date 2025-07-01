@@ -1,23 +1,49 @@
 spring:
   config:
     import: "optional:classpath:keys.properties"
+
   datasource:
     url: ${db.url}
     username: ${db.username}
     password: ${db.password}
     driver-class-name: org.postgresql.Driver
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: true
+
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
       group-id: log-monitor-group
       auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "DevLewi.LogMonitor.dto"
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+    listener:
+      ack-mode: manual_immediate
+
+# Kafka topic configuration
+kafka:
+  topics:
+    logs: log-entries
+    alerts: security-alerts
+    metrics: system-metrics
+
 server:
   port: 8081
+
 logging:
   level:
-    com.hackathon.logmonitor: DEBUG
+    DevLewi.LogMonitor: INFO
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN

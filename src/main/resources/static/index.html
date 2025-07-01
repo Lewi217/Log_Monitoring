@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Monitoring Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-shield-alt"></i> Security Console</h2>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+
+        <div class="sidebar-content">
+            <div class="sidebar-section">
+                <h3>Navigation</h3>
+                <ul class="sidebar-menu">
+                    <li class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
+                    <li><i class="fas fa-exclamation-triangle"></i> Alerts</li>
+                    <li><i class="fas fa-file-alt"></i> Log Explorer</li>
+                    <li><i class="fas fa-chart-line"></i> Analytics</li>
+                    <li><i class="fas fa-cog"></i> Settings</li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Quick Filters</h3>
+                <div class="filter-tags">
+                    <span class="tag critical">Critical</span>
+                    <span class="tag warning">Warning</span>
+                    <span class="tag info">Info</span>
+                    <span class="tag success">Success</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>System Status</h3>
+                <div class="status-item">
+                    <span class="status-indicator active"></span>
+                    <span>Log Collector</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator active"></span>
+                    <span>Alert Engine</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator active"></span>
+                    <span>Database</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <strong>Admin User</strong>
+                    <small>Administrator</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <!-- Top Navigation -->
+        <div class="top-nav">
+            <div class="left-section">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb">Dashboard</div>
+            </div>
+            <div class="right-section">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search logs...">
+                </div>
+                <div class="notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard-container">
+            <div class="dashboard-header">
+                <h1><i class="fas fa-shield-alt"></i> Security Monitoring Dashboard</h1>
+                <p>Real-time log analysis and threat detection system</p>
+                <div class="connection-status">
+                    <span class="status-indicator status-online"></span>
+                    <span id="connectionStatus">System Online</span>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <div class="stat-icon critical"><i class="fas fa-exclamation-circle"></i></div>
+                    <h3>Active Alerts</h3>
+                    <div class="stat-number critical" id="activeAlerts">0</div>
+                    <small>Unresolved security incidents</small>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon critical"><i class="fas fa-skull-crossbones"></i></div>
+                    <h3>Critical Threats</h3>
+                    <div class="stat-number critical" id="criticalAlerts">0</div>
+                    <small>Require immediate attention</small>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon info"><i class="fas fa-database"></i></div>
+                    <h3>Logs Processed</h3>
+                    <div class="stat-number info" id="logsProcessed">0</div>
+                    <small>Last 24 hours</small>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon warning"><i class="fas fa-network-wired"></i></div>
+                    <h3>Unique IPs</h3>
+                    <div class="stat-number warning" id="uniqueIPs">0</div>
+                    <small>Active connections</small>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="btn btn-primary" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+                <button class="btn btn-danger" onclick="simulateAttack()">
+                    <i class="fas fa-bolt"></i> Simulate Attack
+                </button>
+                <button class="btn btn-secondary" onclick="generateTestLogs()">
+                    <i class="fas fa-file-alt"></i> Generate Test Logs
+                </button>
+            </div>
+
+            <!-- Main Panels -->
+            <div class="panel-container">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-exclamation-triangle"></i> Security Alerts</h2>
+                        <div class="panel-actions">
+                            <button class="btn btn-sm"><i class="fas fa-filter"></i> Filter</button>
+                            <button class="btn btn-sm"><i class="fas fa-ellipsis-v"></i></button>
+                        </div>
+                    </div>
+                    <div class="panel-body" id="alertsPanel">
+                        <div class="loading">Loading alerts...</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-file-alt"></i> Recent Logs</h2>
+                        <div class="panel-actions">
+                            <button class="btn btn-sm"><i class="fas fa-filter"></i> Filter</button>
+                            <button class="btn btn-sm"><i class="fas fa-ellipsis-v"></i></button>
+                        </div>
+                    </div>
+                    <div class="panel-body" id="logsPanel">
+                        <div class="loading">Loading logs...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
