@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alert Management - Security Console</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    /* Additional Alert-Specific Styles */
+    .alert-management-container {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .alert-stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .alert-stat-card {
+        background: var(--secondary-color);
+        border-radius: var(--border-radius);
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        transition: var(--transition-fast);
+    }
+
+    .alert-stat-card.critical {
+        border-left: 4px solid var(--danger-color);
+    }
+
+    .alert-stat-card.high {
+        border-left: 4px solid var(--warning-color);
+    }
+
+    .alert-stat-card.medium {
+        border-left: 4px solid var(--accent-color);
+    }
+
+    .alert-stat-card.low {
+        border-left: 4px solid var(--info-color);
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin: 5px 0;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .stat-trend {
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .trend-up {
+        color: var(--danger-color);
+    }
+
+    .trend-down {
+        color: var(--success-color);
+    }
+
+    .alert-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .alert-filters {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .alert-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .alert-list-container {
+        background: var(--secondary-color);
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .alert-list-header {
+        display: grid;
+        grid-template-columns: 50px 120px 100px 1fr 150px 180px 120px;
+        gap: 15px;
+        padding: 15px;
+        background: var(--primary-color);
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .alert-list-item {
+        display: grid;
+        grid-template-columns: 50px 120px 100px 1fr 150px 180px 120px;
+        gap: 15px;
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+        align-items: center;
+        transition: var(--transition-fast);
+    }
+
+    .alert-list-item:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .alert-severity {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .severity-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .severity-dot.critical {
+        background: var(--danger-color);
+    }
+
+    .severity-dot.high {
+        background: var(--warning-color);
+    }
+
+    .severity-dot.medium {
+        background: var(--accent-color);
+    }
+
+    .severity-dot.low {
+        background: var(--info-color);
+    }
+
+    .alert-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+
+    .pagination-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        padding: 15px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    /* Alert Detail Modal */
+    .alert-detail-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: var(--secondary-color);
+        border-radius: var(--border-radius);
+        width: 90%;
+        max-width: 800px;
+        max-height: 80vh;
+        overflow: auto;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .alert-detail-section {
+        margin-bottom: 20px;
+    }
+
+    .alert-detail-section h4 {
+        margin-bottom: 10px;
+        color: var(--accent-color);
+    }
+
+    .alert-detail-row {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+
+    .alert-detail-label {
+        font-weight: bold;
+        color: var(--text-secondary);
+    }
+
+    .alert-detail-value {
+        word-break: break-all;
+    }
+
+    .related-logs {
+        background: var(--bg-dark);
+        border-radius: var(--border-radius);
+        padding: 10px;
+        margin-top: 10px;
+        max-height: 150px;
+        overflow: auto;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 1200px) {
+        .alert-list-header,
+        .alert-list-item {
+            grid-template-columns: 50px 100px 80px 1fr 120px 150px 100px;
+            gap: 10px;
+            padding: 10px;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .alert-list-header,
+        .alert-list-item {
+            grid-template-columns: 30px 80px 70px 1fr 100px 120px auto;
+            font-size: 0.85rem;
+        }
+
+        .alert-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .alert-list-header {
+            display: none;
+        }
+
+        .alert-list-item {
+            grid-template-columns: 1fr;
+            padding: 15px;
+            gap: 8px;
+        }
+
+        .alert-list-item::before {
+            content: attr(data-label);
+            font-weight: bold;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .alert-controls {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+</head>
+
+<body>
+<div class="app-container">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-shield-alt"></i> Security Console</h2>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+
+        <div class="sidebar-content">
+            <div class="sidebar-section">
+                <h3>Navigation</h3>
+                <ul class="sidebar-menu">
+                    <li class="dashboard-link">
+                        <a href="index.html" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i> <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="alerts-link">
+                        <a href="alerts.html" class="nav-link">
+                            <i class="fas fa-exclamation-triangle"></i> <span class="nav-text">Alerts</span>
+                        </a>
+                    </li>
+                    <li class="logs-link">
+                        <a href="log-explorer.html" class="nav-link">
+                            <i class="fas fa-file-alt"></i> <span class="nav-text">Log Explorer</span>
+                        </a>
+                    </li>
+                    <li class="analytics-link">
+                        <div class="nav-link">
+                            <i class="fas fa-chart-line"></i> <span class="nav-text">Analytics</span>
+                        </div>
+                    </li>
+                    <li class="settings-link">
+                        <div class="nav-link">
+                            <i class="fas fa-cog"></i> <span class="nav-text">Settings</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Quick Filters</h3>
+                <div class="filter-tags">
+                    <span class="tag critical">Critical</span>
+                    <span class="tag warning">Warning</span>
+                    <span class="tag info">Info</span>
+                    <span class="tag success">Success</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>System Status</h3>
+                <div class="status-item">
+                    <span class="status-indicator active"></span>
+                    <span>Log Collector</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator active"></span>
+                    <span>Alert Engine</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator active"></span>
+                    <span>Database</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator active" id="kafkaStatus"></span>
+                    <span>Kafka Stream</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <strong>Admin User</strong>
+                    <small>Administrator</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-nav">
+            <div class="left-section">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb">Alerts</div>
+            </div>
+            <div class="right-section">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search alerts..." id="globalSearch">
+                </div>
+                <div class="notifications" id="notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge" id="alertCount">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-header">
+            <h1><i class="fas fa-exclamation-triangle"></i> Alert Management</h1>
+            <div class="alert-management-container">
+                <div class="alert-stats-row">
+                    <div class="alert-stat-card critical">
+                        <div class="stat-label">Critical Alerts</div>
+                        <div class="stat-value" id="criticalCount">12</div>
+                        <div class="stat-trend trend-up">
+                            <i class="fas fa-arrow-up"></i> 15% from yesterday
+                        </div>
+                    </div>
+                    <div class="alert-stat-card high">
+                        <div class="stat-label">High Alerts</div>
+                        <div class="stat-value" id="highCount">24</div>
+                        <div class="stat-trend trend-down">
+                            <i class="fas fa-arrow-down"></i> 5% from yesterday
+                        </div>
+                    </div>
+                    <div class="alert-stat-card medium">
+                        <div class="stat-label">Active Alerts</div>
+                        <div class="stat-value" id="activeCount">42</div>
+                        <div class="stat-trend trend-up">
+                            <i class="fas fa-arrow-up"></i> 8% from yesterday
+                        </div>
+                    </div>
+                    <div class="alert-stat-card low">
+                        <div class="stat-label">New Today</div>
+                        <div class="stat-value" id="newTodayCount">18</div>
+                        <div class="stat-trend trend-down">
+                            <i class="fas fa-arrow-down"></i> 3% from yesterday
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert-controls">
+                    <div class="alert-filters">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Search alerts..." id="alertSearch">
+                        </div>
+                        <select id="severityFilter" class="filter-select">
+                            <option value="">All Severities</option>
+                            <option value="CRITICAL">Critical</option>
+                            <option value="HIGH">High</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="LOW">Low</option>
+                        </select>
+                        <select id="statusFilter" class="filter-select">
+                            <option value="ACTIVE">Active</option>
+                            <option value="RESOLVED">Resolved</option>
+                            <option value="ALL">All</option>
+                        </select>
+                        <select id="timeFilter" class="filter-select">
+                            <option value="24h">Last 24h</option>
+                            <option value="7d">Last 7d</option>
+                            <option value="30d">Last 30d</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="alert-actions">
+                        <button class="btn btn-primary" id="resolveSelectedBtn">
+                            <i class="fas fa-check-circle"></i> Resolve Selected
+                        </button>
+                        <button class="btn btn-secondary" id="exportAlertsBtn">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <button class="btn btn-danger" id="blockIPsBtn">
+                            <i class="fas fa-ban"></i> Block IPs
+                        </button>
+                    </div>
+                </div>
+
+                <div class="alert-list-container">
+                    <div class="alert-list-header">
+                        <div class="alert-checkbox"><input type="checkbox" id="selectAll"></div>
+                        <div class="alert-type">Type</div>
+                        <div class="alert-severity">Severity</div>
+                        <div class="alert-description">Description</div>
+                        <div class="alert-ip">IP Address</div>
+                        <div class="alert-time">Timestamp</div>
+                        <div class="alert-actions">Actions</div>
+                    </div>
+                    <div class="alert-list-body" id="alertList">
+                        <!-- Alerts will be loaded here dynamically -->
+                        <div class="alert-list-item critical" data-id="alert-001">
+                            <div class="alert-checkbox"><input type="checkbox"></div>
+                            <div class="alert-type">Brute Force</div>
+                            <div class="alert-severity">
+                                <span class="severity-dot critical"></span>
+                                Critical
+                            </div>
+                            <div class="alert-description">Multiple failed login attempts from same IP</div>
+                            <div class="alert-ip">192.168.1.105</div>
+                            <div class="alert-time">2023-11-20 14:05:32</div>
+                            <div class="alert-actions">
+                                <button class="btn btn-sm btn-primary" onclick="viewAlertDetails('alert-001')">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+
+                            </div>
+                        </div>
+
+                        <div class="alert-list-item high" data-id="alert-002">
+                            <div class="alert-checkbox"><input type="checkbox"></div>
+                            <div class="alert-type">SQL Injection</div>
+                            <div class="alert-severity">
+                                <span class="severity-dot high"></span>
+                                High
+                            </div>
+                            <div class="alert-description">Potential SQL injection attempt detected</div>
+                            <div class="alert-ip">10.0.0.15</div>
+                            <div class="alert-time">2023-11-20 13:42:18</div>
+                            <div class="alert-actions">
+                                <button class="btn btn-sm btn-primary" onclick="viewAlertDetails('alert-002')">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+
+                            </div>
+                        </div>
+
+                        <!-- More alert items would be loaded here -->
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="btn btn-sm" id="prevPageBtn" disabled>
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <span id="pageInfo">Page 1 of 5</span>
+                        <button class="btn btn-sm" id="nextPageBtn">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alert Detail Modal -->
+            <div class="alert-detail-modal" id="alertDetailModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Alert Details</h3>
+                        <button class="close-btn" onclick="closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body" id="alertDetailContent">
+                        <div class="alert-detail-section">
+                            <h4>Alert Information</h4>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">Alert ID:</div>
+                                <div class="alert-detail-value" id="detail-id">ALERT-001</div>
+                            </div>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">Type:</div>
+                                <div class="alert-detail-value" id="detail-type">Brute Force Attack</div>
+                            </div>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">Severity:</div>
+                                <div class="alert-detail-value" id="detail-severity">
+                                    <span class="severity-dot critical"></span> Critical
+                                </div>
+                            </div>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">Status:</div>
+                                <div class="alert-detail-value" id="detail-status">Active</div>
+                            </div>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">Timestamp:</div>
+                                <div class="alert-detail-value" id="detail-timestamp">2023-11-20 14:05:32 UTC</div>
+                            </div>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">Source:</div>
+                                <div class="alert-detail-value" id="detail-source">Web Server (nginx)</div>
+                            </div>
+                        </div>
+
+                        <div class="alert-detail-section">
+                            <h4>Details</h4>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">IP Address:</div>
+                                <div class="alert-detail-value" id="detail-ip">192.168.1.105</div>
+                            </div>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">User Agent:</div>
+                                <div class="alert-detail-value" id="detail-useragent">Mozilla/5.0 (Windows NT 10.0; Win64; x64)</div>
+                            </div>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">Description:</div>
+                                <div class="alert-detail-value" id="detail-description">
+                                    Multiple failed login attempts detected from this IP address.
+                                    15 attempts in the last 5 minutes targeting admin accounts.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert-detail-section">
+                            <h4>Related Logs</h4>
+                            <div class="related-logs" id="relatedLogs">
+                                <!-- Related logs would be loaded here -->
+                                <div class="log-entry">
+                                    <span class="log-time">14:05:32</span> - Failed login attempt for user 'admin'
+                                </div>
+                                <div class="log-entry">
+                                    <span class="log-time">14:05:28</span> - Failed login attempt for user 'admin'
+                                </div>
+                                <div class="log-entry">
+                                    <span class="log-time">14:05:24</span> - Failed login attempt for user 'admin'
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert-detail-section">
+                            <h4>Actions</h4>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">Assigned To:</div>
+                                <div class="alert-detail-value">
+                                    <select id="assignTo" class="filter-select">
+                                        <option value="">Unassigned</option>
+                                        <option value="user1">John Doe (Security Team)</option>
+                                        <option value="user2">Jane Smith (SOC Analyst)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="alert-detail-row">
+                                <div class="alert-detail-label">Notes:</div>
+                                <div class="alert-detail-value">
+                                    <textarea id="alertNotes" rows="3" placeholder="Add investigation notes..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeModal()">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                        <button class="btn btn-primary" onclick="saveAlertDetails()">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <button class="btn btn-success" onclick="resolveCurrentAlert()">
+                            <i class="fas fa-check"></i> Resolve Alert
+                        </button>
+                        <button class="btn btn-danger" onclick="blockCurrentIP()">
+                            <i class="fas fa-ban"></i> Block IP
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Highlight active menu item
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.alerts-link').classList.add('active');
+
+            // Initialize any charts or other UI elements
+            // loadAlertStats();
+            // loadAlerts();
+        });
+
+        // Alert detail modal functions
+        function viewAlertDetails(alertId) {
+            // In a real implementation, this would fetch alert details from the server
+            console.log("Viewing details for alert:", alertId);
+            document.getElementById('alertDetailModal').style.display = 'flex';
+
+            // Simulate loading alert details
+            // fetch(`/api/alerts/${alertId}`)
+            //     .then(response => response.json())
+            //     .then(data => populateAlertDetails(data))
+            //     .catch(error => console.error('Error loading alert details:', error));
+        }
+
+        function closeModal() {
+            document.getElementById('alertDetailModal').style.display = 'none';
+        }
+
+        function resolveAlert(alertId) {
+            console.log("Resolving alert:", alertId);
+            // API call to resolve alert
+            // fetch(`/api/alerts/${alertId}/resolve`, { method: 'PUT' })
+            //     .then(response => {
+            //         if (response.ok) {
+            //             // Update UI
+            //             const alertElement = document.querySelector(`[data-id="${alertId}"]`);
+            //             if (alertElement) {
+            //                 alertElement.remove();
+            //             }
+            //         }
+            //     })
+            //     .catch(error => console.error('Error resolving alert:', error));
+        }
+
+        function resolveCurrentAlert() {
+            const alertId = document.getElementById('detail-id').textContent;
+            resolveAlert(alertId);
+            closeModal();
+        }
+
+        function blockCurrentIP() {
+            const ip = document.getElementById('detail-ip').textContent;
+            console.log("Blocking IP:", ip);
+            // API call to block IP
+            // fetch('/api/block-ip', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ ip: ip })
+            // })
+            // .then(response => {
+            //     if (response.ok) {
+            //         alert(`IP ${ip} has been blocked successfully`);
+            //     }
+            // })
+            // .catch(error => console.error('Error blocking IP:', error));
+        }
+
+        function saveAlertDetails() {
+            const notes = document.getElementById('alertNotes').value;
+            const assignedTo = document.getElementById('assignTo').value;
+            console.log("Saving alert details:", { notes, assignedTo });
+            // API call to save changes
+            closeModal();
+        }
+
+        // Pagination controls
+        document.getElementById('prevPageBtn').addEventListener('click', function() {
+            console.log("Previous page");
+            // Implement pagination logic
+        });
+
+        document.getElementById('nextPageBtn').addEventListener('click', function() {
+            console.log("Next page");
+            // Implement pagination logic
+        });
+
+        // Bulk actions
+        document.getElementById('resolveSelectedBtn').addEventListener('click', function() {
+            const selectedAlerts = Array.from(document.querySelectorAll('.alert-list-item input[type="checkbox"]:checked'))
+                .map(checkbox => checkbox.closest('.alert-list-item').dataset.id);
+            console.log("Resolving selected alerts:", selectedAlerts);
+            // API call to bulk resolve
+        });
+
+        document.getElementById('exportAlertsBtn').addEventListener('click', function() {
+            console.log("Exporting alerts");
+            // Implement export logic
+        });
+
+        document.getElementById('blockIPsBtn').addEventListener('click', function() {
+            const selectedIPs = Array.from(document.querySelectorAll('.alert-list-item input[type="checkbox"]:checked'))
+                .map(checkbox => checkbox.closest('.alert-list-item').querySelector('.alert-ip').textContent);
+            console.log("Blocking IPs:", selectedIPs);
+            // API call to bulk block IPs
+        });
+
+        // Select all checkbox
+        document.getElementById('selectAll').addEventListener('change', function(e) {
+            const checkboxes = document.querySelectorAll('.alert-list-item input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = e.target.checked;
+            });
+        });
+
+        // Filter functionality
+        document.getElementById('severityFilter').addEventListener('change', function() {
+            const severity = this.value;
+            console.log("Filtering by severity:", severity);
+            // Implement filtering logic
+        });
+
+        // Similar event listeners for other filters...
+    </script>
+
+    <script src="script.js"></script>
+ </body>
+</html>

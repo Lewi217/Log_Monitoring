@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Security Console</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Analytics-specific styles */
+        .analytics-container {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .analytics-time-filter {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .analytics-card {
+            background: var(--secondary-color);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .analytics-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .analytics-card h3 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-container {
+            height: 250px;
+            position: relative;
+        }
+
+        .top-items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .top-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-radius: var(--border-radius);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .top-item-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .top-item-value {
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-dark);
+            border-radius: 3px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--secondary-color);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-change {
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .change-up {
+            color: var(--danger-color);
+        }
+
+        .change-down {
+            color: var(--success-color);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-shield-alt"></i> Security Console</h2>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+
+        <div class="sidebar-content">
+            <div class="sidebar-section">
+                <h3>Navigation</h3>
+                <ul class="sidebar-menu">
+                    <li class="dashboard-link">
+                        <a href="index.html" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i> <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="alerts-link">
+                        <a href="alerts.html" class="nav-link">
+                            <i class="fas fa-exclamation-triangle"></i> <span class="nav-text">Alerts</span>
+                        </a>
+                    </li>
+                    <li class="logs-link">
+                        <a href="log-explorer.html" class="nav-link">
+                            <i class="fas fa-file-alt"></i> <span class="nav-text">Log Explorer</span>
+                        </a>
+                    </li>
+                    <li class="analytics-link active">
+                        <a href="analytics.html" class="nav-link">
+                            <i class="fas fa-chart-line"></i> <span class="nav-text">Analytics</span>
+                        </a>
+                    </li>
+                    <li class="settings-link">
+                        <a href="settings.html" class="nav-link">
+                            <i class="fas fa-cog"></i> <span class="nav-text">Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Quick Filters</h3>
+                <div class="filter-tags">
+                    <span class="tag critical">Critical</span>
+                    <span class="tag warning">Warning</span>
+                    <span class="tag info">Info</span>
+                    <span class="tag success">Success</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>System Status</h3>
+                <div class="status-item">
+                    <span class="status-indicator active"></span>
+                    <span>Log Collector</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator active"></span>
+                    <span>Alert Engine</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator active"></span>
+                    <span>Database</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator active" id="kafkaStatus"></span>
+                    <span>Kafka Stream</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <strong>Admin User</strong>
+                    <small>Administrator</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-nav">
+            <div class="left-section">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="breadcrumb">Analytics</div>
+            </div>
+            <div class="right-section">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search analytics..." id="globalSearch">
+                </div>
+                <div class="notifications" id="notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge" id="alertCount">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-header">
+            <h1><i class="fas fa-chart-line"></i> Log Analytics</h1>
+            <div class="analytics-container">
+                <div class="analytics-time-filter">
+                    <select id="timeRange" class="filter-select">
+                        <option value="24h">Last 24 hours</option>
+                        <option value="7d">Last 7 days</option>
+                        <option value="30d">Last 30 days</option>
+                        <option value="custom">Custom range</option>
+                    </select>
+                    <button class="btn btn-primary" id="refreshAnalytics">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Logs</div>
+                        <div class="stat-value">42,857</div>
+                        <div class="stat-change change-up">
+                            <i class="fas fa-arrow-up"></i> 12% from yesterday
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Alerts Generated</div>
+                        <div class="stat-value">1,245</div>
+                        <div class="stat-change change-down">
+                            <i class="fas fa-arrow-down"></i> 5% from yesterday
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg. Response Time</div>
+                        <div class="stat-value">342ms</div>
+                        <div class="stat-change change-down">
+                            <i class="fas fa-arrow-down"></i> 8% from yesterday
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Storage Used</div>
+                        <div class="stat-value">78%</div>
+                        <div class="stat-change change-up">
+                            <i class="fas fa-arrow-up"></i> 15% from last week
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-card-header">
+                            <h3><i class="fas fa-chart-bar"></i> Log Volume Over Time</h3>
+                            <select class="filter-select" id="logVolumeType">
+                                <option value="count">Count</option>
+                                <option value="size">Size (MB)</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="logVolumeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="analytics-card-header">
+                            <h3><i class="fas fa-exclamation-circle"></i> Alert Distribution</h3>
+                            <select class="filter-select" id="alertDistributionType">
+                                <option value="severity">By Severity</option>
+                                <option value="type">By Type</option>
+                                <option value="source">By Source</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="alertDistributionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="analytics-card-header">
+                            <h3><i class="fas fa-server"></i> Top Sources</h3>
+                            <select class="filter-select" id="topSourcesType">
+                                <option value="volume">By Volume</option>
+                                <option value="alerts">By Alerts</option>
+                            </select>
+                        </div>
+                        <div class="top-items-list">
+                            <div class="top-item">
+                                <div class="top-item-label">
+                                    <span class="severity-dot critical"></span>
+                                    <span>Web Server (nginx)</span>
+                                </div>
+                                <div class="top-item-value">12,456</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 85%"></div>
+                            </div>
+
+                            <div class="top-item">
+                                <div class="top-item-label">
+                                    <span class="severity-dot high"></span>
+                                    <span>Application Server</span>
+                                </div>
+                                <div class="top-item-value">8,342</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 65%"></div>
+                            </div>
+
+                            <div class="top-item">
+                                <div class="top-item-label">
+                                    <span class="severity-dot medium"></span>
+                                    <span>Database</span>
+                                </div>
+                                <div class="top-item-value">5,678</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 45%"></div>
+                            </div>
+
+                            <div class="top-item">
+                                <div class="top-item-label">
+                                    <span class="severity-dot low"></span>
+                                    <span>Firewall</span>
+                                </div>
+                                <div class="top-item-value">3,215</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 30%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="analytics-card-header">
+                            <h3><i class="fas fa-globe"></i> Geographic Distribution</h3>
+                            <select class="filter-select" id="geoDistributionType">
+                                <option value="alerts">Alerts</option>
+                                <option value="traffic">Traffic</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="geoDistributionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="analytics-card-header">
+                            <h3><i class="fas fa-clock"></i> Response Times</h3>
+                            <select class="filter-select" id="responseTimeType">
+                                <option value="average">Average</option>
+                                <option value="percentile">95th Percentile</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="responseTimeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <div class="analytics-card-header">
+                            <h3><i class="fas fa-tags"></i> Log Levels</h3>
+                            <select class="filter-select" id="logLevelType">
+                                <option value="distribution">Distribution</option>
+                                <option value="trend">Trend</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="logLevelChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Highlight active menu item
+        document.querySelector('.analytics-link').classList.add('active');
+
+        // Initialize charts
+        initializeCharts();
+
+        // Refresh button event
+        document.getElementById('refreshAnalytics').addEventListener('click', function() {
+            console.log("Refreshing analytics data...");
+            // In a real implementation, this would fetch fresh data from the server
+            // and update the charts
+        });
+
+        // Time range change event
+        document.getElementById('timeRange').addEventListener('change', function() {
+            console.log("Time range changed to:", this.value);
+            // In a real implementation, this would fetch data for the new time range
+            // and update the charts
+        });
+    });
+
+    function initializeCharts() {
+        // Log Volume Chart
+        const logVolumeCtx = document.getElementById('logVolumeChart').getContext('2d');
+        const logVolumeChart = new Chart(logVolumeCtx, {
+            type: 'line',
+            data: {
+                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
+                datasets: [{
+                    label: 'Log Count',
+                    data: [1200, 800, 1500, 2000, 1800, 2200, 1900],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Alert Distribution Chart
+        const alertDistributionCtx = document.getElementById('alertDistributionChart').getContext('2d');
+        const alertDistributionChart = new Chart(alertDistributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    data: [12, 24, 42, 18],
+                    backgroundColor: [
+                        '#e74c3c',
+                        '#f39c12',
+                        '#3498db',
+                        '#1abc9c'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+
+        // Geographic Distribution Chart
+        const geoDistributionCtx = document.getElementById('geoDistributionChart').getContext('2d');
+        const geoDistributionChart = new Chart(geoDistributionCtx, {
+            type: 'bar',
+            data: {
+                labels: ['US', 'UK', 'DE', 'FR', 'JP', 'IN', 'BR'],
+                datasets: [{
+                    label: 'Alerts',
+                    data: [1200, 800, 600, 500, 400, 300, 200],
+                    backgroundColor: '#3498db',
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Response Time Chart
+        const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+        const responseTimeChart = new Chart(responseTimeCtx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Average (ms)',
+                    data: [450, 420, 380, 360, 340, 320, 310],
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Log Level Chart
+        const logLevelCtx = document.getElementById('logLevelChart').getContext('2d');
+        const logLevelChart = new Chart(logLevelCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Error', 'Warning', 'Info', 'Debug'],
+                datasets: [{
+                    data: [15, 25, 40, 20],
+                    backgroundColor: [
+                        '#e74c3c',
+                        '#f39c12',
+                        '#3498db',
+                        '#95a5a6'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+    }
+</script>
+<script src="script.js"></script>
+</body>
+</html>

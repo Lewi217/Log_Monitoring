@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Explorer - Security Console</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+  <style>
+    /* Log Explorer Specific Styles */
+    .log-management-container {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .log-stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .log-stat-card {
+        background: var(--secondary-color);
+        border-radius: var(--border-radius);
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        transition: var(--transition-fast);
+    }
+
+    .log-stat-card.critical {
+        border-left: 4px solid var(--danger-color);
+    }
+
+    .log-stat-card.warning {
+        border-left: 4px solid var(--warning-color);
+    }
+
+    .log-stat-card.info {
+        border-left: 4px solid var(--accent-color);
+    }
+
+    .log-stat-card.success {
+        border-left: 4px solid var(--success-color);
+    }
+
+    /* Add other log-specific styles here */
+  </style>
+</head>
+
+<body>
+<div class="app-container">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2><i class="fas fa-shield-alt"></i> Security Console</h2>
+      <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+    </div>
+
+    <div class="sidebar-content">
+      <div class="sidebar-section">
+        <h3>Navigation</h3>
+        <ul class="sidebar-menu">
+          <li class="dashboard-link">
+            <a href="index.html" class="nav-link">
+              <i class="fas fa-tachometer-alt"></i> <span class="nav-text">Dashboard</span>
+            </a>
+          </li>
+          <li class="alerts-link">
+            <a href="alerts.html" class="nav-link">
+              <i class="fas fa-exclamation-triangle"></i> <span class="nav-text">Alerts</span>
+            </a>
+          </li>
+          <li class="logs-link active">
+            <a href="log-explorer.html" class="nav-link">
+              <i class="fas fa-file-alt"></i> <span class="nav-text">Log Explorer</span>
+            </a>
+          </li>
+          <li class="analytics-link">
+            <a href="analytics.html" class="nav-link">
+              <i class="fas fa-chart-line"></i> <span class="nav-text">Analytics</span>
+            </a>
+          </li>
+          <li class="settings-link">
+            <a href="settings.html" class="nav-link">
+              <i class="fas fa-cog"></i> <span class="nav-text">Settings</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Quick Filters</h3>
+        <div class="filter-tags">
+          <span class="tag critical" onclick="filterLogs('ERROR')">Error</span>
+          <span class="tag warning" onclick="filterLogs('WARN')">Warning</span>
+          <span class="tag info" onclick="filterLogs('INFO')">Info</span>
+          <span class="tag success" onclick="filterLogs('SUCCESS')">Success</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>System Status</h3>
+        <div class="status-item">
+          <span class="status-indicator active"></span>
+          <span>Log Collector</span>
+        </div>
+        <div class="status-item">
+          <span class="status-indicator active"></span>
+          <span>Alert Engine</span>
+        </div>
+        <div class="status-item">
+          <span class="status-indicator active"></span>
+          <span>Database</span>
+        </div>
+        <div class="status-item">
+          <span class="status-indicator active" id="kafkaStatus"></span>
+          <span>Kafka Stream</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-profile">
+        <div class="avatar">AD</div>
+        <div class="user-info">
+          <strong>Admin User</strong>
+          <small>Administrator</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="top-nav">
+      <div class="left-section">
+        <button class="menu-toggle" id="menuToggle">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="breadcrumb">Logs / Explorer</div>
+      </div>
+      <div class="right-section">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Search logs..." id="globalSearch">
+        </div>
+        <div class="notifications" id="notifications">
+          <i class="fas fa-bell"></i>
+          <span class="badge" id="alertCount">3</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-header">
+      <h1><i class="fas fa-file-alt"></i> Log Explorer</h1>
+
+
+      <div class="log-stats-row">
+        <div class="log-stat-card critical">
+          <div class="stat-icon">
+            <i class="fas fa-file-alt"></i>
+          </div>
+          <div class="stat-label">Total Logs</div>
+          <div class="stat-value" id="totalLogs">0</div>
+          <div class="stat-trend trend-up">
+            <i class="fas fa-arrow-up"></i> 12% from yesterday
+          </div>
+        </div>
+        <div class="log-stat-card warning">
+          <div class="stat-icon">
+            <i class="fas fa-exclamation-circle"></i>
+          </div>
+          <div class="stat-label">Errors</div>
+          <div class="stat-value" id="errorLogs">0</div>
+          <div class="stat-trend trend-down">
+            <i class="fas fa-arrow-down"></i> 5% from yesterday
+          </div>
+        </div>
+        <div class="log-stat-card info">
+          <div class="stat-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="stat-label">Warnings</div>
+          <div class="stat-value" id="warningLogs">0</div>
+          <div class="stat-trend trend-up">
+            <i class="fas fa-arrow-up"></i> 8% from yesterday
+          </div>
+        </div>
+        <div class="log-stat-card success">
+          <div class="stat-icon">
+            <i class="fas fa-server"></i>
+          </div>
+          <div class="stat-label">Top Source</div>
+          <div class="stat-value" id="topSource">-</div>
+          <div class="stat-source" id="topSourceCount">-</div>
+        </div>
+      </div>
+
+      <div class="filters-container">
+        <div class="search-filters">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search logs..." id="alertSearch">
+          </div>
+          <select id="severityFilter" class="filter-select">
+            <option value="">All Levels</option>
+            <option value="ERROR">Error</option>
+            <option value="WARN">Warning</option>
+            <option value="INFO">Info</option>
+            <option value="DEBUG">Debug</option>
+            <option value="TRACE">Trace</option>
+          </select>
+          <input type="text" id="ipFilter" placeholder="Filter by IP...">
+          <select id="sourceFilter" class="filter-select">
+            <option value="">All Sources</option>
+            <option value="app">Application</option>
+            <option value="auth">Authentication</option>
+            <option value="db">Database</option>
+            <option value="network">Network</option>
+            <option value="api">API</option>
+          </select>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="exportLogs()">
+            <i class="fas fa-download"></i> Export
+          </button>
+          <button class="btn btn-secondary" onclick="showSavedQueries()">
+            <i class="fas fa-bookmark"></i> Saved Queries
+          </button>
+          <button class="btn btn-danger" id="clearFiltersBtn">
+            <i class="fas fa-filter-circle-xmark"></i> Clear Filters
+          </button>
+        </div>
+      </div>
+
+
+      <div class="log-management-container">
+        <div class="log-viewer-toolbar">
+          <div class="time-range-selector">
+            <select id="quickTimeRange">
+              <option value="5m">Last 5 minutes</option>
+              <option value="15m">Last 15 minutes</option>
+              <option value="1h">Last hour</option>
+              <option value="4h">Last 4 hours</option>
+              <option value="12h">Last 12 hours</option>
+              <option value="24h">Last 24 hours</option>
+              <option value="7d">Last 7 days</option>
+              <option value="custom">Custom range</option>
+            </select>
+            <div id="customTimeRange" style="display: none;">
+              <input type="datetime-local" id="startTime">
+              <span>to</span>
+              <input type="datetime-local" id="endTime">
+            </div>
+            <button class="btn btn-sm" onclick="applyTimeFilter()">Apply</button>
+            <button class="btn btn-sm btn-secondary" onclick="saveQuery()">
+              <i class="fas fa-save"></i> Save Query
+            </button>
+          </div>
+          <div class="view-options">
+            <label><input type="checkbox" id="autoRefresh" checked> Auto-refresh (30s)</label>
+            <select id="pageSize">
+              <option value="25">25 items</option>
+              <option value="50" selected>50 items</option>
+              <option value="100">100 items</option>
+              <option value="200">200 items</option>
+            </select>
+            <select id="viewMode">
+              <option value="table">Table View</option>
+              <option value="raw">Raw View</option>
+              <option value="json">JSON View</option>
+            </select>
+            <button class="btn btn-sm" id="columnToggleBtn" title="Toggle Columns">
+              <i class="fas fa-columns"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Visualization Row -->
+        <div class="visualization-row">
+          <div class="chart-container">
+            <h3><i class="fas fa-chart-pie"></i> Log Level Distribution</h3>
+            <canvas id="logLevelChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <h3><i class="fas fa-chart-line"></i> Log Volume Over Time</h3>
+            <canvas id="logVolumeChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Log Table View -->
+        <div class="log-table-container" id="tableView">
+          <table class="log-table">
+            <thead>
+            <tr>
+              <th class="timestamp-col">Timestamp <i class="fas fa-sort"></i></th>
+              <th class="source-col">Source <i class="fas fa-sort"></i></th>
+              <th class="level-col">Level <i class="fas fa-sort"></i></th>
+              <th class="message-col">Message</th>
+              <th class="ip-col">IP Address <i class="fas fa-sort"></i></th>
+              <th class="user-col">User <i class="fas fa-sort"></i></th>
+
+            </tr>
+            </thead>
+            <tbody id="logTableBody">
+            <!-- Logs will be loaded here -->
+            <tr class="loading-row">
+              <td colspan="7">
+                <div class="loading-spinner">
+                  <i class="fas fa-spinner fa-spin"></i> Loading logs...
+                </div>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Raw Log View -->
+        <div class="raw-log-container" id="rawView" style="display: none;">
+          <pre id="rawLogContent"></pre>
+        </div>
+
+        <!-- JSON Log View -->
+        <div class="json-log-container" id="jsonView" style="display: none;">
+          <pre><code class="language-json" id="jsonLogContent"></code></pre>
+        </div>
+
+        <div class="pagination-controls">
+          <div class="pagination-buttons">
+            <button class="btn btn-sm btn-pagination" id="logFirstPage" title="First Page">
+              <i class="fas fa-angle-double-left"></i>
+            </button>
+            <button class="btn btn-sm btn-pagination" id="logPrevPage" title="Previous Page">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="page-info" id="logPageInfo">Page 1 of 10</span>
+            <button class="btn btn-sm btn-pagination" id="logNextPage" title="Next Page">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+            <button class="btn btn-sm btn-pagination" id="logLastPage" title="Last Page">
+              <i class="fas fa-angle-double-right"></i>
+            </button>
+          </div>
+          <div class="pagination-stats">
+            <span class="total-records">Total: <span id="totalRecords">0</span> records</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log Detail Modal -->
+  <div class="alert-detail-modal" id="logDetailModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Log Entry Details</h3>
+        <button class="close-btn" onclick="hideLogDetail()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="log-detail-item">
+          <span class="log-detail-label">Timestamp:</span>
+          <span class="log-detail-value" id="detailTimestamp">-</span>
+        </div>
+
+        <div class="log-detail-item">
+          <span class="log-detail-label">Level:</span>
+          <span class="log-detail-value log-level" id="detailLevel">-</span>
+        </div>
+
+        <div class="log-detail-item">
+          <span class="log-detail-label">Source:</span>
+          <span class="log-detail-value" id="detailSource">-</span>
+        </div>
+
+        <div class="log-detail-item">
+          <span class="log-detail-label">IP Address:</span>
+          <span class="log-detail-value" id="detailIp">-</span>
+        </div>
+
+        <div class="log-detail-item">
+          <span class="log-detail-label">User:</span>
+          <span class="log-detail-value" id="detailUser">-</span>
+        </div>
+
+        <div class="log-detail-item">
+          <h4>Message</h4>
+          <div class="log-message" id="detailMessage">-</div>
+        </div>
+
+        <div class="log-detail-item" id="stacktraceSection">
+          <h4>Stack Trace</h4>
+          <pre class="log-stacktrace" id="detailStackTrace">No stack trace available</pre>
+        </div>
+
+        <div class="log-detail-item" id="metadataSection">
+          <h4>Metadata</h4>
+          <div class="metadata-container" id="metadataContent">
+            <!-- Metadata will be loaded here -->
+          </div>
+        </div>
+
+        <div class="log-detail-item">
+          <h4>Raw Data</h4>
+          <pre><code class="language-json" id="rawDetailContent">{}</code></pre>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="hideLogDetail()">
+          <i class="fas fa-times"></i> Close
+        </button>
+        <button class="btn btn-primary" onclick="copyLogDetails()">
+          <i class="fas fa-copy"></i> Copy Details
+        </button>
+        <button class="btn btn-danger" onclick="createAlertFromLog()">
+          <i class="fas fa-exclamation-triangle"></i> Create Alert
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saved Queries Modal -->
+  <div class="saved-queries-modal" id="savedQueriesModal" style="display: none;">
+    <div class="modal-overlay" onclick="hideSavedQueries()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Saved Queries</h3>
+        <button class="btn btn-sm btn-danger" onclick="hideSavedQueries()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <table class="saved-queries-table">
+          <thead>
+          <tr>
+            <th>Name</th>
+            <th>Query</th>
+            <th>Last Used</th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody id="savedQueriesList">
+          <tr>
+            <td>Recent Errors</td>
+            <td>level:ERROR time:>now-1h</td>
+            <td>2 hours ago</td>
+            <td>
+              <button class="btn btn-sm btn-primary">Load</button>
+              <button class="btn btn-sm btn-danger">Delete</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Auth Failures</td>
+            <td>source:auth level:WARN</td>
+            <td>Yesterday</td>
+            <td>
+              <button class="btn btn-sm btn-primary">Load</button>
+              <button class="btn btn-sm btn-danger">Delete</button>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveNewQuery()">
+          <i class="fas fa-plus"></i> Save Current Query
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Column Toggle Modal -->
+  <div class="column-toggle-modal" id="columnToggleModal" style="display: none;">
+    <div class="modal-overlay" onclick="hideColumnToggle()"></div>
+    <div class="modal-content small">
+      <div class="modal-header">
+        <h3>Toggle Columns</h3>
+        <button class="btn btn-sm btn-danger" onclick="hideColumnToggle()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="column-toggle-list">
+          <label><input type="checkbox" checked data-column="timestamp"> Timestamp</label>
+          <label><input type="checkbox" checked data-column="source"> Source</label>
+          <label><input type="checkbox" checked data-column="level"> Level</label>
+          <label><input type="checkbox" checked data-column="message"> Message</label>
+          <label><input type="checkbox" checked data-column="ip"> IP Address</label>
+          <label><input type="checkbox" checked data-column="user"> User</label>
+          <label><input type="checkbox" data-column="session"> Session ID</label>
+          <label><input type="checkbox" data-column="method"> HTTP Method</label>
+          <label><input type="checkbox" data-column="status"> Status Code</label>
+          <label><input type="checkbox" data-column="duration"> Duration</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="resetColumnToggle()">
+          Reset to Default
+        </button>
+        <button class="btn btn-primary" onclick="applyColumnToggle()">
+          Apply Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+  <script src="script.js"></script>
+  <script>
+    // Initialize highlight.js for syntax highlighting
+    hljs.highlightAll();
+
+    // Sample data for demonstration
+    const sampleLogs = [
+        {
+            id: "1",
+            timestamp: "2023-06-15T14:32:45Z",
+            source: "auth",
+            level: "ERROR",
+            message: "Failed login attempt for user admin from 192.168.1.45",
+            ip: "192.168.1.45",
+            user: "admin",
+            status: "401",
+            metadata: {
+                "user_agent": "Mozilla/5.0",
+                "attempts": 3,
+                "reason": "Invalid credentials"
+            },
+            stack_trace: "at AuthService.authenticate (auth.js:45:12)\nat Router.handleLogin (routes.js:102:15)"
+        },
+        {
+            id: "2",
+            timestamp: "2023-06-15T14:30:12Z",
+            source: "api",
+            level: "INFO",
+            message: "GET /api/users returned 200 OK",
+            ip: "10.0.0.23",
+            user: "system",
+            status: "200",
+            metadata: {
+                "method": "GET",
+                "path": "/api/users",
+                "duration_ms": 45,
+                "response_size": "12.5KB"
+            }
+        },
+        {
+            id: "3",
+            timestamp: "2023-06-15T14:28:33Z",
+            source: "db",
+            level: "WARN",
+            message: "Slow query detected (1200ms): SELECT * FROM users WHERE status = 'active'",
+            ip: "127.0.0.1",
+            user: "db_service",
+            metadata: {
+                "query": "SELECT * FROM users WHERE status = 'active'",
+                "duration_ms": 1200,
+                "threshold_ms": 1000
+            }
+        },
+        {
+            id: "4",
+            timestamp: "2023-06-15T14:25:07Z",
+            source: "network",
+            level: "ERROR",
+            message: "Connection timeout to external service api.payment.com",
+            ip: "10.0.0.42",
+            user: "payment_service",
+            metadata: {
+                "service": "api.payment.com",
+                "timeout_ms": 5000,
+                "attempts": 3
+            },
+            stack_trace: "at HttpClient.request (http.js:78:21)\nat PaymentService.process (payment.js:145:30)"
+        },
+        {
+            id: "5",
+            timestamp: "2023-06-15T14:22:56Z",
+            source: "app",
+            level: "DEBUG",
+            message: "Processing user request for /dashboard",
+            ip: "192.168.1.102",
+            user: "johndoe",
+            metadata: {
+                "session_id": "a1b2c3d4e5",
+                "method": "GET",
+                "params": {}
+            }
+        }
+    ];
+
+    // Sidebar toggle functionality
+document.addEventListener('DOMContentLoaded', function() {
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const menuToggle = document.getElementById('menuToggle');
+
+// Toggle sidebar collapse
+function toggleSidebar() {
+    sidebar.classList.toggle('collapsed');
+}
+
+// Set up event listeners
+sidebarToggle.addEventListener('click', toggleSidebar);
+menuToggle.addEventListener('click', toggleSidebar);
+
+// Close sidebar when clicking outside on mobile
+document.addEventListener('click', function(event) {
+    if (window.innerWidth <= 768 &&
+        !sidebar.contains(event.target) &&
+        !menuToggle.contains(event.target) &&
+        !sidebar.classList.contains('collapsed')) {
+        toggleSidebar();
+    }
+});
+});
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', function() {
+        // Highlight active menu item
+        document.querySelector('.logs-link').classList.add('active');
+
+        // Load sample logs
+        renderLogs(sampleLogs);
+
+        // Initialize charts
+        initCharts();
+
+        // Set up event listeners
+        setupEventListeners();
+    });
+
+    function renderLogs(logs) {
+        const tableBody = document.getElementById('logTableBody');
+        tableBody.innerHTML = '';
+
+        if (logs.length === 0) {
+            tableBody.innerHTML = `
+                <tr class="no-results">
+                    <td colspan="7">No logs found matching your criteria</td>
+                </tr>
+            `;
+            return;
+        }
+
+        logs.forEach(log => {
+            const row = document.createElement('tr');
+            row.className = `log-row level-${log.level.toLowerCase()}`;
+            row.setAttribute('data-id', log.id);
+            row.onclick = () => showLogDetail(log);
+
+            row.innerHTML = `
+                <td class="timestamp-col">${formatDate(log.timestamp)}</td>
+                <td class="source-col">${log.source}</td>
+                <td class="level-col"><span class="log-level level-${log.level.toLowerCase()}">${log.level}</span></td>
+                <td class="message-col">${log.message}</td>
+                <td class="ip-col">${log.ip || '-'}</td>
+                <td class="user-col">${log.user || '-'}</td>
+
+            `;
+
+            tableBody.appendChild(row);
+        });
+
+        // Update statistics
+        updateStatistics(logs);
+    }
+
+    function formatDate(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleString();
+    }
+
+    function updateStatistics(logs) {
+        document.getElementById('totalLogs').textContent = logs.length;
+
+        const errorCount = logs.filter(log => log.level === 'ERROR').length;
+        document.getElementById('errorLogs').textContent = errorCount;
+
+        const warningCount = logs.filter(log => log.level === 'WARN').length;
+        document.getElementById('warningLogs').textContent = warningCount;
+
+        // Calculate top source
+        const sourceCounts = {};
+        logs.forEach(log => {
+            sourceCounts[log.source] = (sourceCounts[log.source] || 0) + 1;
+        });
+
+        let topSource = '-';
+        let topCount = 0;
+        for (const [source, count] of Object.entries(sourceCounts)) {
+            if (count > topCount) {
+                topSource = source;
+                topCount = count;
+            }
+        }
+
+        document.getElementById('topSource').textContent = topSource;
+        document.getElementById('topSourceCount').textContent = `${topCount} logs (${Math.round((topCount / logs.length) * 100)}%)`;
+    }
+
+    function initCharts() {
+        // Log Level Distribution Chart
+        const levelCtx = document.getElementById('logLevelChart').getContext('2d');
+        const levelChart = new Chart(levelCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Error', 'Warning', 'Info', 'Debug', 'Other'],
+                datasets: [{
+                    data: [12, 8, 45, 15, 2],
+                    backgroundColor: [
+                        '#e74c3c',
+                        '#f39c12',
+                        '#3498db',
+                        '#95a5a6',
+                        '#2c3e50'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+
+        // Log Volume Over Time Chart
+        const volumeCtx = document.getElementById('logVolumeChart').getContext('2d');
+        const volumeChart = new Chart(volumeCtx, {
+            type: 'line',
+            data: {
+                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
+                datasets: [
+                    {
+                        label: 'Errors',
+                        data: [2, 5, 8, 3, 6, 4, 1],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Warnings',
+                        data: [5, 3, 6, 2, 7, 5, 3],
+                        borderColor: '#f39c12',
+                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Info',
+                        data: [20, 25, 30, 35, 40, 30, 25],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+    }
+
+    function setupEventListeners() {
+        // View mode toggle
+        document.getElementById('viewMode').addEventListener('change', function() {
+            const viewMode = this.value;
+            document.getElementById('tableView').style.display = 'none';
+            document.getElementById('rawView').style.display = 'none';
+            document.getElementById('jsonView').style.display = 'none';
+
+            if (viewMode === 'table') {
+                document.getElementById('tableView').style.display = 'block';
+            } else if (viewMode === 'raw') {
+                document.getElementById('rawView').style.display = 'block';
+                document.getElementById('rawLogContent').textContent = JSON.stringify(sampleLogs, null, 2);
+            } else if (viewMode === 'json') {
+                document.getElementById('jsonView').style.display = 'block';
+                document.getElementById('jsonLogContent').textContent = JSON.stringify(sampleLogs, null, 2);
+                hljs.highlightElement(document.getElementById('jsonLogContent'));
+            }
+        });
+
+        // Quick time range selector
+        document.getElementById('quickTimeRange').addEventListener('change', function() {
+            const customRange = document.getElementById('customTimeRange');
+            if (this.value === 'custom') {
+                customRange.style.display = 'block';
+            } else {
+                customRange.style.display = 'none';
+            }
+        });
+
+        // Column toggle button
+        document.getElementById('columnToggleBtn').addEventListener('click', function() {
+            document.getElementById('columnToggleModal').style.display = 'block';
+        });
+    }
+
+    function showLogDetail(log) {
+// Basic log information
+document.getElementById('detailTimestamp').textContent = formatDate(log.timestamp);
+
+const levelElement = document.getElementById('detailLevel');
+levelElement.textContent = log.level;
+levelElement.className = `log-detail-value log-level level-${log.level.toLowerCase()}`;
+
+document.getElementById('detailSource').textContent = log.source;
+document.getElementById('detailIp').textContent = log.ip || '-';
+document.getElementById('detailUser').textContent = log.user || '-';
+document.getElementById('detailMessage').textContent = log.message;
+
+// Stack trace (hide section if empty)
+const stacktraceSection = document.getElementById('stacktraceSection');
+const stacktraceElement = document.getElementById('detailStackTrace');
+if (log.stack_trace) {
+    stacktraceElement.textContent = log.stack_trace;
+    stacktraceSection.style.display = 'block';
+} else {
+    stacktraceSection.style.display = 'none';
+}
+
+// Metadata (hide section if empty)
+const metadataSection = document.getElementById('metadataSection');
+const metadataContainer = document.getElementById('metadataContent');
+metadataContainer.innerHTML = '';
+
+if (log.metadata && Object.keys(log.metadata).length > 0) {
+    for (const [key, value] of Object.entries(log.metadata)) {
+        const item = document.createElement('div');
+        item.className = 'log-detail-item';
+        item.innerHTML = `
+            <span class="log-detail-label">${key}:</span>
+            <span class="log-detail-value">${JSON.stringify(value, null, 2)}</span>
+        `;
+        metadataContainer.appendChild(item);
+    }
+    metadataSection.style.display = 'block';
+} else {
+    metadataSection.style.display = 'none';
+}
+
+// Raw data
+document.getElementById('rawDetailContent').textContent = JSON.stringify(log, null, 2);
+hljs.highlightElement(document.getElementById('rawDetailContent'));
+
+// Show the modal
+document.getElementById('logDetailModal').style.display = 'flex';
+}
+
+function hideLogDetail() {
+document.getElementById('logDetailModal').style.display = 'none';
+}
+
+function formatDate(timestamp) {
+const date = new Date(timestamp);
+return date.toLocaleString();
+}
+
+
+    function hideLogDetail() {
+        document.getElementById('logDetailModal').style.display = 'none';
+    }
+
+    function createAlertFromLog(log) {
+        alert(`Creating alert from log: ${log.id}`);
+        // In a real app, this would open an alert creation form with log details pre-filled
+    }
+
+    function copyLogDetails() {
+        // In a real app, this would copy the log details to clipboard
+        alert('Log details copied to clipboard');
+    }
+
+    function showSavedQueries() {
+        document.getElementById('savedQueriesModal').style.display = 'block';
+    }
+
+    function hideSavedQueries() {
+        document.getElementById('savedQueriesModal').style.display = 'none';
+    }
+
+    function saveQuery() {
+        const queryName = prompt('Enter a name for this query:');
+        if (queryName) {
+            alert(`Query "${queryName}" saved successfully`);
+        }
+    }
+
+    function exportLogs() {
+        alert('Exporting logs...');
+        // In a real app, this would initiate a download of the filtered logs
+    }
+
+    function filterLogs(level) {
+        document.getElementById('logLevelFilter').value = level;
+        // In a real app, this would trigger a refresh of the logs with the new filter
+        alert(`Filtering logs by level: ${level}`);
+    }
+
+    function applyTimeFilter() {
+        const range = document.getElementById('quickTimeRange').value;
+        alert(`Applying time filter: ${range}`);
+    }
+
+    function showColumnToggle() {
+        document.getElementById('columnToggleModal').style.display = 'block';
+    }
+
+    function hideColumnToggle() {
+        document.getElementById('columnToggleModal').style.display = 'none';
+    }
+
+    function applyColumnToggle() {
+        alert('Column visibility updated');
+        hideColumnToggle();
+    }
+
+    function resetColumnToggle() {
+        document.querySelectorAll('.column-toggle-list input').forEach(checkbox => {
+            checkbox.checked = true;
+        });
+    }
+  </script>
+ </body>
+</html>

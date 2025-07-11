@@ -6,6 +6,142 @@
     <title>Security Monitoring Dashboard</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Additional styles for the enhanced dashboard */
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            gap: 15px;
+        }
+
+        .visualization-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: var(--secondary-color);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            height: 250px; /* Reduced chart height */
+            position: relative;
+        }
+
+        .chart-container h3 {
+            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .chart-container canvas {
+            width: 100% !important;
+            height: 180px !important;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--secondary-color);
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow: auto;
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        /* Filter form styles */
+        .filter-form {
+            display: grid;
+            gap: 15px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border-radius: var(--border-radius);
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .visualization-row {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .simulation-buttons {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .header-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
 </head>
 <body>
 <div class="app-container">
@@ -22,11 +158,31 @@
             <div class="sidebar-section">
                 <h3>Navigation</h3>
                 <ul class="sidebar-menu">
-                    <li class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
-                    <li><i class="fas fa-exclamation-triangle"></i> Alerts</li>
-                    <li><i class="fas fa-file-alt"></i> Log Explorer</li>
-                    <li><i class="fas fa-chart-line"></i> Analytics</li>
-                    <li><i class="fas fa-cog"></i> Settings</li>
+                    <li class="dashboard-link">
+                        <a href="index.html" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i> <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="alerts-link">
+                        <a href="alerts.html" class="nav-link">
+                            <i class="fas fa-exclamation-triangle"></i> <span class="nav-text">Alerts</span>
+                        </a>
+                    </li>
+                    <li class="logs-link">
+                        <a href="log-explorer.html" class="nav-link">
+                            <i class="fas fa-file-alt"></i> <span class="nav-text">Log Explorer</span>
+                        </a>
+                    </li>
+                    <li class="analytics-link">
+                        <div class="nav-link">
+                            <i class="fas fa-chart-line"></i> <span class="nav-text">Analytics</span>
+                        </div>
+                    </li>
+                    <li class="settings-link">
+                        <div class="nav-link">
+                            <i class="fas fa-cog"></i> <span class="nav-text">Settings</span>
+                        </div>
+                    </li>
                 </ul>
             </div>
 
@@ -53,6 +209,10 @@
                 <div class="status-item">
                     <span class="status-indicator active"></span>
                     <span>Database</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator active" id="kafkaStatus"></span>
+                    <span>Kafka Stream</span>
                 </div>
             </div>
         </div>
@@ -81,11 +241,11 @@
             <div class="right-section">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Search logs...">
+                    <input type="text" placeholder="Search logs..." id="globalSearch">
                 </div>
-                <div class="notifications">
+                <div class="notifications" id="notifications">
                     <i class="fas fa-bell"></i>
-                    <span class="badge">3</span>
+                    <span class="badge" id="alertCount">0</span>
                 </div>
             </div>
         </div>
@@ -94,81 +254,133 @@
         <div class="dashboard-container">
             <div class="dashboard-header">
                 <h1><i class="fas fa-shield-alt"></i> Security Monitoring Dashboard</h1>
-                <p>Real-time log analysis and threat detection system</p>
-                <div class="connection-status">
-                    <span class="status-indicator status-online"></span>
-                    <span id="connectionStatus">System Online</span>
+                <div class="header-controls">
+                    <div class="time-filter">
+                        <select id="timeRange">
+                            <option value="1">Last 1 hour</option>
+                            <option value="24" selected>Last 24 hours</option>
+                            <option value="168">Last 7 days</option>
+                        </select>
+                        <div class="connection-status">
+                            <span class="status-indicator status-online"></span>
+                            <span id="connectionStatus">System Online</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
+
+            <!-- Stats Grid -->
             <div class="dashboard-grid">
-                <div class="stat-card">
+                <div class="stat-card" onclick="navigateTo('alerts/active')">
                     <div class="stat-icon critical"><i class="fas fa-exclamation-circle"></i></div>
                     <h3>Active Alerts</h3>
                     <div class="stat-number critical" id="activeAlerts">0</div>
-                    <small>Unresolved security incidents</small>
+                    <div class="stat-trend" id="alertTrend"><i class="fas fa-equals trend-neutral"></i> 0%</div>
                 </div>
 
-                <div class="stat-card">
+                <div class="stat-card" onclick="navigateTo('alerts/by-severity?severity=CRITICAL')">
                     <div class="stat-icon critical"><i class="fas fa-skull-crossbones"></i></div>
                     <h3>Critical Threats</h3>
                     <div class="stat-number critical" id="criticalAlerts">0</div>
-                    <small>Require immediate attention</small>
+                    <div class="stat-source" id="topAlertSource">Top: None</div>
                 </div>
 
-                <div class="stat-card">
+                <div class="stat-card" onclick="navigateTo('logs/recent')">
                     <div class="stat-icon info"><i class="fas fa-database"></i></div>
                     <h3>Logs Processed</h3>
                     <div class="stat-number info" id="logsProcessed">0</div>
-                    <small>Last 24 hours</small>
+                    <div class="stat-rate"><span id="logRate">0</span>/min</div>
                 </div>
 
-                <div class="stat-card">
-                    <div class="stat-icon warning"><i class="fas fa-network-wired"></i></div>
-                    <h3>Unique IPs</h3>
-                    <div class="stat-number warning" id="uniqueIPs">0</div>
-                    <small>Active connections</small>
+                <div class="stat-card" onclick="navigateTo('logs/errors')">
+                    <div class="stat-icon warning"><i class="fas fa-bug"></i></div>
+                    <h3>Error Logs</h3>
+                    <div class="stat-number warning" id="errorLogs">0</div>
+                    <div class="stat-breakdown" id="errorBreakdown">0% 4xx, 0% 5xx</div>
+                </div>
+            </div>
+
+            <!-- Compact Visualization Row -->
+            <div class="visualization-row">
+                <div class="chart-container">
+                    <h3><i class="fas fa-chart-bar"></i> Alerts by Severity</h3>
+                    <canvas id="severityChart" height="180"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3><i class="fas fa-chart-pie"></i> Log Sources</h3>
+                    <canvas id="sourceChart" height="180"></canvas>
                 </div>
             </div>
 
             <!-- Controls -->
-            <div class="controls">
-                <button class="btn btn-primary" onclick="refreshData()">
-                    <i class="fas fa-sync-alt"></i> Refresh Data
-                </button>
-                <button class="btn btn-danger" onclick="simulateAttack()">
-                    <i class="fas fa-bolt"></i> Simulate Attack
-                </button>
-                <button class="btn btn-secondary" onclick="generateTestLogs()">
-                    <i class="fas fa-file-alt"></i> Generate Test Logs
-                </button>
+            <div class="controls-section">
+                <div class="auto-refresh-option">
+                    <input type="checkbox" id="autoRefresh" checked>
+                    <label for="autoRefresh">Auto-refresh (30s)</label>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i> Refresh Data
+                    </button>
+                    <button class="btn btn-danger" onclick="simulateAttack()">
+                        <i class="fas fa-bolt"></i> Simulate Attack
+                    </button>
+                    <button class="btn btn-secondary" onclick="generateTestLogs()">
+                        <i class="fas fa-file-alt"></i> Generate Test Logs
+                    </button>
+                </div>
             </div>
 
             <!-- Main Panels -->
             <div class="panel-container">
-                <div class="panel">
+                <div class="panel with-tabs">
                     <div class="panel-header">
-                        <h2><i class="fas fa-exclamation-triangle"></i> Security Alerts</h2>
+                        <div class="panel-tabs">
+                            <button class="tab-btn active" data-tab="recent-alerts">Recent Alerts</button>
+                            <button class="tab-btn" data-tab="top-ips">Suspicious IPs</button>
+                        </div>
                         <div class="panel-actions">
-                            <button class="btn btn-sm"><i class="fas fa-filter"></i> Filter</button>
-                            <button class="btn btn-sm"><i class="fas fa-ellipsis-v"></i></button>
+                            <button class="btn btn-sm" onclick="refreshAlerts()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button class="btn btn-sm" onclick="showAlertFilters()">
+                                <i class="fas fa-filter"></i>
+                            </button>
                         </div>
                     </div>
-                    <div class="panel-body" id="alertsPanel">
-                        <div class="loading">Loading alerts...</div>
+                    <div class="panel-body">
+                        <div class="tab-content active" id="recent-alerts">
+                            <div class="loading">Loading alerts...</div>
+                        </div>
+                        <div class="tab-content" id="top-ips">
+                            <div class="loading">Loading IP analysis...</div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="panel">
+                <div class="panel with-tabs">
                     <div class="panel-header">
-                        <h2><i class="fas fa-file-alt"></i> Recent Logs</h2>
+                        <div class="panel-tabs">
+                            <button class="tab-btn active" data-tab="recent-logs">Recent Logs</button>
+                            <button class="tab-btn" data-tab="error-logs">Error Logs</button>
+                        </div>
                         <div class="panel-actions">
-                            <button class="btn btn-sm"><i class="fas fa-filter"></i> Filter</button>
-                            <button class="btn btn-sm"><i class="fas fa-ellipsis-v"></i></button>
+                            <button class="btn btn-sm" onclick="refreshLogs()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button class="btn btn-sm" onclick="showLogFilters()">
+                                <i class="fas fa-filter"></i>
+                            </button>
                         </div>
                     </div>
-                    <div class="panel-body" id="logsPanel">
-                        <div class="loading">Loading logs...</div>
+                    <div class="panel-body">
+                        <div class="tab-content active" id="recent-logs">
+                            <div class="loading">Loading logs...</div>
+                        </div>
+                        <div class="tab-content" id="error-logs">
+                            <div class="loading">Loading error logs...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -176,6 +388,174 @@
     </div>
 </div>
 
+<!-- Filter Modal -->
+<div class="modal" id="filterModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="filterModalTitle">Filter Options</h3>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="filterModalContent">
+            <form class="filter-form" id="alertFilterForm" style="display:none;">
+                <div class="filter-group">
+                    <label for="alertSeverity">Severity</label>
+                    <select id="alertSeverity">
+                        <option value="">All Severities</option>
+                        <option value="CRITICAL">Critical</option>
+                        <option value="HIGH">High</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="LOW">Low</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="alertStatus">Status</label>
+                    <select id="alertStatus">
+                        <option value="ACTIVE">Active</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="ALL">All</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="alertType">Alert Type</label>
+                    <select id="alertType">
+                        <option value="">All Types</option>
+                        <option value="BRUTE_FORCE">Brute Force</option>
+                        <option value="SUSPICIOUS_ACTIVITY">Suspicious Activity</option>
+                        <option value="MALICIOUS_IP">Malicious IP</option>
+                    </select>
+                </div>
+            </form>
+
+            <form class="filter-form" id="logFilterForm" style="display:none;">
+                <div class="filter-group">
+                    <label for="logLevel">Log Level</label>
+                    <select id="logLevel">
+                        <option value="">All Levels</option>
+                        <option value="ERROR">Error</option>
+                        <option value="WARN">Warning</option>
+                        <option value="INFO">Info</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="logSource">Source</label>
+                    <select id="logSource">
+                        <option value="">All Sources</option>
+                        <option value="web-server">Web Server</option>
+                        <option value="database">Database</option>
+                        <option value="firewall">Firewall</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="logIp">IP Address</label>
+                    <input type="text" id="logIp" placeholder="Filter by IP...">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+
+    function initCharts() {
+        // Set chart defaults
+        Chart.defaults.font.size = 10;
+        Chart.defaults.color = '#bdc3c7';
+
+        const severityCtx = document.getElementById('severityChart').getContext('2d');
+        const sourceCtx = document.getElementById('sourceChart').getContext('2d');
+
+        // Severity Chart
+        new Chart(severityCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    label: 'Alerts by Severity',
+                    data: [12, 19, 3, 5],
+                    backgroundColor: [
+                        'rgba(231, 76, 60, 0.7)',
+                        'rgba(243, 156, 18, 0.7)',
+                        'rgba(52, 152, 219, 0.7)',
+                        'rgba(26, 188, 156, 0.7)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Source Chart
+        new Chart(sourceCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Web Server', 'Database', 'Firewall', 'Application'],
+                datasets: [{
+                    data: [300, 50, 100, 80],
+                    backgroundColor: [
+                        'rgba(52, 152, 219, 0.7)',
+                        'rgba(155, 89, 182, 0.7)',
+                        'rgba(46, 204, 113, 0.7)',
+                        'rgba(241, 196, 15, 0.7)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { font: { size: 10 } }
+                    }
+                }
+            }
+        });
+    }
+
+    // Filter modal functions
+    function showAlertFilters() {
+        document.getElementById('filterModalTitle').textContent = 'Alert Filters';
+        document.getElementById('alertFilterForm').style.display = 'grid';
+        document.getElementById('logFilterForm').style.display = 'none';
+        document.getElementById('filterModal').style.display = 'flex';
+    }
+
+    function showLogFilters() {
+        document.getElementById('filterModalTitle').textContent = 'Log Filters';
+        document.getElementById('logFilterForm').style.display = 'grid';
+        document.getElementById('alertFilterForm').style.display = 'none';
+        document.getElementById('filterModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('filterModal').style.display = 'none';
+    }
+
+    function applyFilters() {
+        // Implementation depends on your specific filtering needs
+        closeModal();
+        refreshData();
+    }
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        initCharts();
+        // Rest of your initialization code...
+    });
+</script>
 <script src="script.js"></script>
 </body>
 </html>
